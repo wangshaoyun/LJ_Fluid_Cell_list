@@ -24,7 +24,8 @@ module global_variables
   integer :: StepNum0             !steps of preheating
   integer :: StepNum              !steps of running
   integer :: DeltaStep1           !step inteval, physical quantities
-  integer :: DeltaStep2           !step inteval, write data
+  integer :: DeltaStep2           !step inteval, physical quantities
+  integer :: DeltaStep3           !step inteval, write data
   integer :: step                 !steps of calculate the physical quantities
   real*8  :: dr                   !length of each moving
   real*8  :: total_num = 0        !Total choose number
@@ -67,23 +68,58 @@ subroutine periodic_condition(rr)
   implicit none
   real*8, intent(inout) :: rr(3)
 
-  if ( rr(1) > Lx/2 ) then
+  if ( rr(1) > Lx ) then
     rr(1) = rr(1) - Lx
-  elseif( rr(1) <= -Lx/2 ) then
+  elseif( rr(1) <= 0 ) then
     rr(1) = rr(1) + Lx
   end if
-  if ( rr(2) > Ly/2 ) then
+  if ( rr(2) > Ly ) then
     rr(2) = rr(2) - Ly
-  elseif( rr(2) <= -Ly/2 ) then
+  elseif( rr(2) <= 0 ) then
     rr(2) = rr(2) + Ly
   end if
-  if ( rr(3) > Lz/2 ) then
+  if ( rr(3) > Lz ) then
     rr(3) = rr(3) - Lz
-  elseif( rr(3) <= -Lz/2 ) then
+  elseif( rr(3) <= 0 ) then
     rr(3) = rr(3) + Lz
   end if
 
 end subroutine periodic_condition
+
+
+subroutine periodic_condition1(rij)
+  !--------------------------------------!
+  !3D Peridodic condition of position vector
+  !   
+  !Input
+  !   rr
+  !Output
+  !   rr
+  !External Variables
+  !   Lx, Ly, Lz
+  !Routine Referenced:
+  !1.
+  !--------------------------------------!
+  implicit none
+  real*8, intent(inout) :: rij(3)
+
+  if ( rij(1) > Lx/2 ) then
+    rij(1) = rij(1) - Lx
+  elseif( rij(1) <= -Lx/2 ) then
+    rij(1) = rij(1) + Lx
+  end if
+  if ( rij(2) > Ly/2 ) then
+    rij(2) = rij(2) - Ly
+  elseif( rij(2) <= -Ly/2 ) then
+    rij(2) = rij(2) + Ly
+  end if
+  if ( rij(3) > Lz/2 ) then
+    rij(3) = rij(3) - Lz
+  elseif( rij(3) <= -Lz/2 ) then
+    rij(3) = rij(3) + Lz
+  end if
+
+end subroutine periodic_condition1
 
 
 subroutine rij_and_rr(rij, rsqr, i, j)

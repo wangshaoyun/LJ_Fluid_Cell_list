@@ -73,11 +73,13 @@ implicit none
     call Monte_Carlo_Move(EE, DeltaE)
     if ( mod(step,DeltaStep1) == 0 ) then 
       call compute_physical_quantities
-      call compute_radial_distribution_function
       call total_energy(EE1)
       call write_physical_quantities( step, EE, EE1, DeltaE )
     end if
-    if ( mod(step, DeltaStep2) == 0 ) then
+    if ( mod(step,DeltaStep2) == 0 ) then 
+      call compute_radial_distribution_function
+    end if
+    if ( mod(step, DeltaStep3) == 0 ) then
       call write_pos1(step)
     end if
   end do
@@ -86,7 +88,7 @@ implicit none
 !###############Finished##############!
   call cpu_time(finished)
   total_time=finished-started+total_time
-  call write_time(total_time)
+  call write_time
   write(*,*) 'finished!'
 !#####################################!
 

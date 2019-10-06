@@ -56,6 +56,7 @@ subroutine read_data
     read(100,*) StepNum
     read(100,*) DeltaStep1
     read(100,*) DeltaStep2
+    read(100,*) DeltaStep3
     read(100,*) dr
     read(100,*) best_accpt_ratio
     read(100,*) delta_dr
@@ -83,6 +84,7 @@ subroutine write_data_to_screen
   write(*,*) 'Total steps                  :', (StepNum0+StepNum)
   write(*,*) 'DeltaStep1                   :', DeltaStep1
   write(*,*) 'DeltaStep2                   :', DeltaStep2
+  write(*,*) 'DeltaStep3                   :', DeltaStep3
   write(*,*) 'Distance of each move        :', dr
   write(*,*) '****************************************************'
   write(*,*)
@@ -252,14 +254,13 @@ subroutine write_physical_quantities(j, EE, EE1, DeltaE)
 end subroutine write_physical_quantities
 
 
-subroutine write_time(time)
+subroutine write_time
   !------------------------------------!
   !
   !------------------------------------!
   use global_variables
   implicit none
 
-  real*8, intent(in) :: time
   open(10,file='./data/time.txt')
     write(10,*) 'time:(seconds)', real(total_time)
     write(10,*) 'time:(hours)  ', real(total_time/3600)

@@ -97,6 +97,8 @@ subroutine read_energy_parameters
   cly = Ly/ncly
   clz = Lz/nclz
 
+  rc_lj2 = rc_lj*rc_lj
+
 end subroutine read_energy_parameters
 
 
@@ -175,6 +177,22 @@ subroutine build_cell_list
     end do
   end do
 
+  open(100,file='./data/hoc_r.txt')
+    do i = 1, nclx
+      do j = 1, ncly
+        do k = 1, nclz
+         write(100,*) i,j,k,hoc(i,j,k),inv_hoc(i,j,k)
+        end do
+      end do
+    end do
+  close(100)
+
+  open(100,file='./data/cell_list.txt')
+    do i = 1, NN
+      write(100,*) cell_list(i),inv_cell_list(i)
+    end do
+  close(100)
+
 end subroutine build_cell_list
 
 
@@ -214,7 +232,7 @@ subroutine total_energy (EE)
       k = hoc(icelx,icely,icelz)
       do while(k/=0)
         if (k/=i) then
-          call rij_and_rr( rij, rr, i, j )
+          call rij_and_rr( rij, rr, i, k )
           if (rr<rc_lj2) then
             inv_rr2  = sigma*sigma/rr
             inv_rr6  = inv_rr2 * inv_rr2 * inv_rr2
@@ -244,13 +262,6 @@ subroutine Delta_Energy(DeltaE)
   !Routine Referenced:
   !
   !Reference:
-  !In fact, the cut-off radius in good solvent is 2^(1/6), 
-  !which was first obatained by JOHN D. WEEKS, DAVID CHANDLER
-  !and HANS C. ANDERSEN. So it is called WCA potential.
-  !JOHN D. WEEKS, DAVID CHANDLER and HANS C. ANDERSEN, 'Role of 
-  !Repulsive Forces in Determining the Equilibrium Structure of
-  !Simple Liquids', THE JOURNAL OF CHEMICAL PHYSICS, Vol. 54, 
-  !pp.5237-5247, (1971).
   !--------------------------------------!
   use global_variables
   implicit none
@@ -296,7 +307,7 @@ subroutine Delta_Energy(DeltaE)
     do while (j/=0) 
       if (j/=ip) then
         rij = pos_ip1 - pos(j,:)
-        call periodic_condition(rij)
+        call periodic_condition1(rij)
         rr = rij(1)*rij(1) + rij(2)*rij(2) + rij(3)*rij(3)
         if (rr<rc_lj2) then
           inv_rr2  = sigma*sigma/rr
@@ -349,8 +360,7 @@ subroutine update_cell_list_delete(iq,icelx,icely,icelz)
   implicit none
   integer, intent(in) :: iq
   integer, intent(in) :: icelx, icely, icelz
-  integer :: nti,bfi,ii,j       ! next particle of ii, before particle of ii
-  integer :: ed, st 
+  integer :: nti,bfi, j       ! next particle of ii, before particle of ii
 
   bfi = cell_list(iq)
   nti = inv_cell_list(iq)
@@ -377,7 +387,7 @@ subroutine update_cell_list_add(iq,icelx,icely,icelz)
   implicit none
   integer, intent(in) :: iq
   integer, intent(in) :: icelx, icely, icelz
-  integer :: nti,bfi,j       ! next particle of ii, before particle of ii
+  integer :: nti,bfi,j      ! next particle of ii, before particle of ii
 
   inv_cell_list(iq) = 0
   if ( inv_hoc(icelx,icely,icelz) /=0 ) then
@@ -388,6 +398,7 @@ subroutine update_cell_list_add(iq,icelx,icely,icelz)
 
   cell_list(iq) = hoc(icelx,icely,icelz)
   hoc(icelx,icely,icelz) = iq
+  
 
 end subroutine update_cell_list_add
 
@@ -408,11 +419,11 @@ subroutine compute_pressure (pressure)
   implicit none
   real*8, intent(out) :: pressure
   integer i,j,k
-  real*8 :: rr, vir, inv_r2, inv_r6, rc_lj2
+  real*8 :: rr, vir, inv_r2, inv_r6
   real*8, dimension(3) :: rij, fij
 
   vir = 0
-  rc_lj2 = rc_lj * rc_lj
+  pressure = 0
   do i = 1, NN-1
     do j = i+1, NN
       call rij_and_rr(rij, rr, i, j)
@@ -422,7 +433,8 @@ subroutine compute_pressure (pressure)
       vir = vir + dot_product(fij,rij)/3
     end do 
   end do
-  pressure = rho / Beta + vir / (Lx*Ly*Lz)
+  pressure = rho / Beta + vir / (Lx*Ly*Lz) / NN
+  write(*,*) pressure
 
 end subroutine compute_pressure
 

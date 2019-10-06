@@ -37,9 +37,9 @@ subroutine Initialize_position
       call random_number(rnd1)
       call random_number(rnd2)
       call random_number(rnd3)
-      pos(i,1)=rnd1 * Lx - Lx/2
-      pos(i,2)=rnd2 * Ly - Ly/2
-      pos(i,3)=rnd3 * Lz - Lz/2
+      pos(i,1)=rnd1 * Lx
+      pos(i,2)=rnd2 * Ly
+      pos(i,3)=rnd3 * Lz
       !
       !periodic condition
       call periodic_condition(pos(i,1:3))
@@ -81,7 +81,7 @@ subroutine Monte_Carlo_Move( EE, DeltaE )
   real*8 :: EE1, EE2
 
   do j = 1, NN
-    
+
     call Choose_Particle
 
     call New_Position
@@ -89,8 +89,6 @@ subroutine Monte_Carlo_Move( EE, DeltaE )
     call Delta_Energy(DeltaE)
 
     call Move_or_not(EE, DeltaE)
-
-    call update_cell_list
 
   end do
 
@@ -172,12 +170,14 @@ subroutine Move_or_not(EE, DeltaE)
     pos(ip,1:3) = pos_ip1(1:3)
     EE = EE + DeltaE
     accpt_num = accpt_num + 1
+    call update_cell_list
   else 
     call random_number(rnd)
     if ( rnd < Exp(-Beta*DeltaE) ) then
       pos(ip,1:3) = pos_ip1(1:3)
       EE = EE + DeltaE
       accpt_num = accpt_num + 1
+      call update_cell_list
     endif
   endif
   total_num = total_num + 1
