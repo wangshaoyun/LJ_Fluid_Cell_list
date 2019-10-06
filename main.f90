@@ -53,14 +53,12 @@ implicit none
   if ( i <= StepNum0 ) then
     do step = i, StepNum0
       call Monte_Carlo_Move(EE, DeltaE)
-!       write(*,*) EE,DeltaE
       if ( mod(step,DeltaStep1) == 0 ) then
         call compute_physical_quantities
         call total_energy(EE1)
         call write_physical_quantities( step, EE, EE1, DeltaE )
         call adjust_move_distance
       end if
-      call update_verlet_list
       if ( mod(step,DeltaStep2) == 0 ) then
         call write_pos1(step)
       end if
@@ -79,7 +77,6 @@ implicit none
       call total_energy(EE1)
       call write_physical_quantities( step, EE, EE1, DeltaE )
     end if
-    call update_verlet_list
     if ( mod(step, DeltaStep2) == 0 ) then
       call write_pos1(step)
     end if

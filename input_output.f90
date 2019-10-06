@@ -3,6 +3,8 @@ module input_output
   
   save
   real*8, allocatable, dimension(:,:), private :: rdf
+  real*8, private :: pressure
+
   contains
 
 subroutine initialize_parameters
@@ -15,6 +17,20 @@ subroutine initialize_parameters
   logical alive 
 
   !
+  !Input parameters
+  call read_data
+
+  Lx = (NN/rho)**(1./3)
+  Ly = Lx
+  Lz = Lx
+
+  allocate( pos(NN, 3) )
+  allocate( rdf(500,2) )
+  rdf = 0
+  !
+  !Write data
+  call write_data_to_screen
+  !
   !Judge whether restart or continue
   Inquire(file='start_time.txt',exist=alive)
   if (alive) then
@@ -24,21 +40,6 @@ subroutine initialize_parameters
   else
     restart_or_continue=0
   end if
-
-  !
-  !Input parameters
-  call read_data
-
-  Lx = (NN/rho)**(1./3)
-  Ly = Lx
-  Lz = Lx
-
-  !Write data
-  call write_data_to_screen
-
-  !
-  !Allocate arrays and initialize them
-  call allocatte_arrays_and_initialize
 
 end subroutine initialize_parameters
 
@@ -67,6 +68,8 @@ subroutine write_data_to_screen
   use global_variables
   implicit none
 
+  write(*,*)
+  write(*,*)
   write(*,*) '******************system_data***********************'
   write(*,*) 'Total particles,          NN :',    NN
   write(*,*) 'Length of the box,        Lx :',    Lx
@@ -82,19 +85,10 @@ subroutine write_data_to_screen
   write(*,*) 'DeltaStep2                   :', DeltaStep2
   write(*,*) 'Distance of each move        :', dr
   write(*,*) '****************************************************'
+  write(*,*)
+  write(*,*)
+
 end subroutine write_data_to_screen
-
-
-subroutine allocatte_arrays_and_initialize
-  use global_variables
-  implicit none
-
-  allocate( pos(NN, 3) )
-  allocate( rdf(500,2) )
-
-  rdf = 0
-
-end subroutine allocatte_arrays_and_initialize
 
 
 subroutine continue_read_data(l)
@@ -139,27 +133,10 @@ subroutine compute_physical_quantities
   use global_variables
   use compute_energy
   implicit none
-  integer i,j,k
-  real*8 :: rr, pressure, Rg
-  real*8, dimension(3) :: rij
   
-  Rg     = 0
-  do i = 1, NN-1
-    do j = i+1, NN
-        call rij_and_rr(rij, rr, i, j)
-        Rg  = Rg + rr
-    end do
-  end do
-  Rg     = Rg / NN / (NN-1)
   !
   !Calculate Pressure
   call compute_pressure(pressure)
-  !
-  !Output Pressure
-  open(37, position='append', file='./data/pressure.txt')
-    write(37,370) 1.*step, Rg, pressure
-    370 format(3F15.6)
-  close(37)
   
 end subroutine compute_physical_quantities
 
@@ -192,6 +169,7 @@ subroutine compute_radial_distribution_function
   close(31)
 
 end subroutine compute_radial_distribution_function
+
 
 subroutine write_pos
   !----------------------------------------!
@@ -262,6 +240,13 @@ subroutine write_physical_quantities(j, EE, EE1, DeltaE)
   open(37,position='append', file='./data/energy_and_time.txt')
     write(37,370) 1.*j, EE, EE1, DeltaE, accpt_ratio
     370 format(5F15.6)
+  close(37)
+
+  !
+  !Output Pressure
+  open(37, position='append', file='./data/pressure.txt')
+    write(37,371) 1.*step, pressure
+    371 format(2F15.6)
   close(37)
 
 end subroutine write_physical_quantities

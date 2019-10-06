@@ -81,16 +81,17 @@ subroutine Monte_Carlo_Move( EE, DeltaE )
   real*8 :: EE1, EE2
 
   do j = 1, NN
-!       call total_energy(EE1)
-
+    
     call Choose_Particle
+
     call New_Position
+
     call Delta_Energy(DeltaE)
+
     call Move_or_not(EE, DeltaE)
-    !
-    !test EE2-EE1 = DeltaE
-!       call total_energy(EE2)
-!       write(*,*) EE2 - EE1, DeltaE, EE2, EE1  
+
+    call update_cell_list
+
   end do
 
 end subroutine Monte_Carlo_Move
