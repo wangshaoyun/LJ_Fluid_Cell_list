@@ -20,11 +20,6 @@ module compute_energy
   real*8,  private :: rsk_lj      !Skin between cut off sphere and verlet list 
                                   !sphere
   integer, private :: npair1      !number of pairs in the lj verlet sphere
-!
-!fene potential
-  real*8,  private :: R0_2        !Max bond length R0 square in FENE potential
-  real*8,  private :: Kvib        !FENE spring constant k
-  integer, private :: N_bond      !Number of Chemical bond of polymers
 !##########end coefficient in potential function###########!
 
 
@@ -64,7 +59,7 @@ subroutine initialize_energy_parameters
   !read energy parameters from file
   call read_energy_parameters
 
-  if (rc_lj<Lx/20) then
+  if (rc_lj<Lx/4) then
     !
     !Initialize lj parameters and array allocate.
     call initialize_lj_parameters
@@ -100,20 +95,6 @@ subroutine total_energy (EE)
 end subroutine total_energy
 
 
-subroutine enerex(ic, ib, xt, i, eni)
-  use global_variables
-  implicit none
-  integer, intent(in) :: ic
-  integer, intent(in) :: ib
-  integer, intent(in) :: i
-  real*8, intent(out) :: eni
-  real*8, dimension(3), intent(in) :: xt
-
-  
-
-end subroutine enerex
-
-
 subroutine LJ_energy (EE)
   !--------------------------------------!
   !Compute total LJ potential energy,
@@ -147,14 +128,14 @@ subroutine LJ_energy (EE)
   integer :: i, j, k, l, m
   real*8  :: rr, rij(3), inv_rr2, inv_rr6
 
-  if (rc_lj>Lx/10) then
+  if (rc_lj>Lx/4) then
     do i = 1, NN-1
       do j = i+1, NN
         call rij_and_rr( rij, rr, i, j )
         inv_rr2  = sigma*sigma/rr
         inv_rr6  = inv_rr2 * inv_rr2 * inv_rr2
         EE = EE + 4 * epsilon * ( inv_rr6 * inv_rr6 - inv_rr6 + 0.25D0)
-      end do 
+      end do
     end do
   else
     do i = 1, NN
@@ -179,6 +160,29 @@ subroutine LJ_energy (EE)
   end if
 
 end subroutine LJ_energy
+
+
+subroutine update_verlet_list
+  !--------------------------------------!
+  !Judge whether renew verlet list or not
+  !   
+  !Input
+  !   EE
+  !Output
+  !   EE
+  !External Variables
+  !   Nq
+  !Routine Referenced:
+  !1.
+  !--------------------------------------!
+  use global_variables
+  implicit none
+
+  if ( mod(step, nint(rsk_lj/dr/2)) == 0 .and. rc_lj<Lx/4 ) then
+    call build_lj_verlet_list
+  end if
+
+end subroutine update_verlet_list
 
 
 subroutine Delta_Energy(DeltaE)
@@ -206,9 +210,6 @@ subroutine Delta_Energy(DeltaE)
   !
   !Compute energy of LJ potential
   call Delta_LJ_Energy(DeltaE)
-  !
-  !Compute Delta energy of FENE potential
-  call Delta_FENE_Energy(DeltaE)
 
 end subroutine Delta_Energy
 
@@ -247,7 +248,7 @@ subroutine Delta_lj_Energy(DeltaE)
   sigma2 = sigma * sigma
   rc_lj2 = rc_lj * rc_lj
 
-  if (rc_lj>Lx/20) then
+  if (rc_lj>Lx/4) then
     do i = 1, NN
       if ( i == ip ) cycle
       !
@@ -324,7 +325,6 @@ subroutine Delta_lj_Energy(DeltaE)
       end if
     end do
   end if
-
   DeltaE = DeltaE + 4 * epsilon * EE
 
 end subroutine Delta_lj_Energy
@@ -343,17 +343,131 @@ subroutine read_energy_parameters
     read(100,*) rc_lj
     read(100,*) rv_lj
     read(100,*) rsk_lj
-    read(100,*) R0_2
-    read(100,*) Kvib
   close(100)
 
-  if (rc_lj>Lx/20) then
+  if (rc_lj>Lx/2) then
     rc_lj = Lx/2
-    write(*,*) 'Does not use verlet list!'
-    write(*,*) 'rc_lj=', rc_lj
   end if
 
 end subroutine read_energy_parameters
+
+
+subroutine initialize_lj_parameters
+  !--------------------------------------!
+  !
+  !--------------------------------------!
+  use global_variables
+  implicit none
+  real*8 :: v_verlet
+  !
+  !allocate verlet list of LJ potential
+  if ( allocated(lj_point) ) deallocate(lj_point)
+  allocate(  lj_point(NN)  )
+  lj_point   = 0
+  v_verlet = 8.D0/3 * pi * rv_lj**3
+  if ( allocated(lj_pair_list) ) deallocate(lj_pair_list)
+  allocate(  lj_pair_list(100*NN*ceiling(rho*v_verlet))  )
+  lj_pair_list = 0
+
+end subroutine initialize_lj_parameters
+
+
+subroutine build_lj_verlet_list
+  !--------------------------------------!
+  !Construct lj_pair_list and lj_point by the link list
+  !method with the complexity of O(N)
+  !   
+  !Input
+  !   pos
+  !Output
+  !   lj_pair_list, lj_point
+  !External Variables
+  !   NN, Lx, Ly, Lz, rv_lj, lj_pair_list, lj_point, pos
+  !Routine Referenced:
+  !1. rij_and_rr(rij, rr, i, j)
+  !Reference:
+  !Frenkel, Smit, 'Understanding molecular simulation: from
+  !algorithm to applications', Elsevier, 2002, pp.550-552. 
+  !--------------------------------------!
+  use global_variables
+  implicit none
+  integer i,j,k,l,m,n,p,q,r,maxnab
+  integer icel,jcel,kcel,ncel1,ncel2,ncel3
+  real*8, dimension(3) :: rij
+  real*8 :: rsqr,rcel1,rcel2,rcel3
+  integer, dimension(NN) :: cell_list
+  integer,allocatable,dimension(:,:,:)::hoc
+
+  ncel1=int(Lx/rv_lj)   !number of cell in x direction
+  ncel2=int(Ly/rv_lj)   !number of cell in y direction
+  ncel3=int(Lz/rv_lj)   !number of cell in z direction
+  allocate(hoc(0:ncel1-1,0:ncel2-1,0:ncel3-1))
+
+  maxnab=size(lj_pair_list)
+  hoc=0
+  rcel1=Lx/ncel1      !Size of each cell in x direction
+  rcel2=Ly/ncel2      !Size of each cell in y direction
+  rcel3=Lz/ncel3      !Size of each cell in z direction
+  do i=1,NN
+    icel=int((pos(i,1)+Lx/2)/rcel1)
+    jcel=int((pos(i,2)+Ly/2)/rcel2)
+    kcel=int((pos(i,3)+Lz/2)/rcel3)
+    cell_list(i)=hoc(icel,jcel,kcel)
+    hoc(icel,jcel,kcel)=i
+  end do
+
+  k=0
+  do i=1,NN
+    icel=int((pos(i,1)+Lx/2)/rcel1)  
+    jcel=int((pos(i,2)+Ly/2)/rcel2)
+    kcel=int((pos(i,3)+Lz/2)/rcel3)
+    do l=-1,1
+      if (icel+l .ge. ncel1) then
+        p=icel+l-ncel1
+      elseif(icel+l<0) then
+        p=icel+l+ncel1
+      else
+        p=icel+l
+      end if
+      do m=-1,1
+        if (jcel+m .ge. ncel2) then
+          q=jcel+m-ncel2
+        elseif(jcel+m<0) then
+          q=jcel+m+ncel2
+        else
+          q=jcel+m
+        end if
+        do n=-1,1
+          if (kcel+n .ge. ncel3) then
+            r=kcel+n-ncel3
+          elseif(kcel+n<0) then
+            r=kcel+n+ncel3
+          else
+            r=kcel+n
+          end if
+          j=hoc(p,q,r)
+          do while (j /= 0)
+            call rij_and_rr(rij,rsqr,i,j)
+            if ( i/=j .and. rsqr<(rv_lj*rv_lj) ) then
+              k = k + 1
+              if ( k > maxnab ) then
+                write(*,*) 'maxnab', maxnab
+                write(*,*) 'k',  k
+                write(*,*) 'lj verlet list is too small!'
+                stop
+              end if
+              lj_pair_list(k)=j
+            end if
+            j=cell_list(j)
+          end do
+        end do
+      end do
+    end do
+    lj_point(i)=k
+  end do
+  npair1=k
+  deallocate(hoc)
+end subroutine build_lj_verlet_list
 
 
 subroutine compute_pressure (pressure)
@@ -377,32 +491,14 @@ subroutine compute_pressure (pressure)
 
   vir = 0
   rc_lj2 = rc_lj * rc_lj
-  do i = 1, NN
+  do i = 1, NN-1
     do j = i+1, NN
       call rij_and_rr(rij, rr, i, j)
-      if (rr<rc_lj2) then
-        inv_r2 = sigma*sigma / rr
-        inv_r6 = inv_r2*inv_r2*inv_r2
-        fij = 48 * epsilon * inv_r2 * inv_r6 * (inv_r6-0.5) * rij
-        vir = vir + dot_product(fij,rij)/3
-      end if
+      inv_r2 = sigma*sigma / rr
+      inv_r6 = inv_r2*inv_r2*inv_r2
+      fij = 48 * epsilon * inv_r2 * inv_r6 * (inv_r6-0.5) * rij
+      vir = vir + dot_product(fij,rij)/3
     end do 
-    if ( mod(i,Nml)==1 ) then
-      call rij_and_rr(rij, rr, i, i+1)
-      fij = Kvib * ( 1 - sqrt(R0_2/rr) ) * rij
-      vir = vir + dot_product(fij,rij)/3/2
-    elseif ( mod(i,Nml)==0 ) then
-      call rij_and_rr(rij, rr, i, i-1)
-      fij = Kvib * ( 1 - sqrt(R0_2/rr) ) * rij
-      vir = vir + dot_product(fij,rij)/3/2
-    else
-      call rij_and_rr(rij, rr, i, i+1)
-      fij = Kvib * ( 1 - sqrt(R0_2/rr) ) * rij
-      vir = vir + dot_product(fij,rij)/3/2
-      call rij_and_rr(rij, rr, i, i-1)
-      fij = Kvib * ( 1 - sqrt(R0_2/rr) ) * rij
-      vir = vir + dot_product(fij,rij)/3/2
-    end if
   end do
   pressure = rho / Beta + vir / (Lx*Ly*Lz)
 

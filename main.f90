@@ -6,10 +6,12 @@ use compute_energy
 implicit none
 
 !##########Data Dictionary############!
-  integer :: i, j, k
+  integer :: i
   real*8  :: EE        ! Total Energy before move
   real*8  :: EE1       ! Total Energy after move
   real*8  :: DeltaE    ! Energy difference
+  !   real*8  :: wn        ! Rosenbluth factor of new configuration
+  !   real*8  :: wo        ! Rosenbluth factor of old configuration
 !#####################################!
 
 !#############Initialize##############!
@@ -50,12 +52,15 @@ implicit none
 !##############Preheation#############!
   if ( i <= StepNum0 ) then
     do step = i, StepNum0
-      call CBMC_Move( EE, DeltaE )
+      call Monte_Carlo_Move(EE, DeltaE)
+!       write(*,*) EE,DeltaE
       if ( mod(step,DeltaStep1) == 0 ) then
         call compute_physical_quantities
         call total_energy(EE1)
         call write_physical_quantities( step, EE, EE1, DeltaE )
+        call adjust_move_distance
       end if
+      call update_verlet_list
       if ( mod(step,DeltaStep2) == 0 ) then
         call write_pos1(step)
       end if
@@ -63,17 +68,18 @@ implicit none
     i = step
   end if
 !#####################################!
-
+  
   call total_energy(EE)
 !###############Running###############!
   do step=i, StepNum+StepNum0
-    call CBMC_Move( EE, DeltaE )
+    call Monte_Carlo_Move(EE, DeltaE)
     if ( mod(step,DeltaStep1) == 0 ) then 
       call compute_physical_quantities
-      call total_energy(EE1)
       call compute_radial_distribution_function
+      call total_energy(EE1)
       call write_physical_quantities( step, EE, EE1, DeltaE )
     end if
+    call update_verlet_list
     if ( mod(step, DeltaStep2) == 0 ) then
       call write_pos1(step)
     end if

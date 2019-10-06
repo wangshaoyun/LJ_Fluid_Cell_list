@@ -9,14 +9,11 @@ module global_variables
 !########################constants#########################!
 
 !####################systems coefficient###################!
-  integer :: Ngl      !Number of linear chains
-  integer :: Nml      !Number of monomers in each chain
   integer :: NN       !Total particles in the system
   real*8  :: rho      !Polymer monomer number density 
   real*8  :: Lx       !Length of cell in x direction
   real*8  :: Ly       !Length of cell in y direction
   real*8  :: Lz       !Length of cell in z direction
-  real*8  :: R_bond   !Initial bond length of polymers
   real*8  :: Beta     !Beta=1/(kB*T), T is temperature, 
                       !kB is Boltzmann constant
 !##################end systems coefficient#################!
@@ -30,7 +27,6 @@ module global_variables
   integer :: DeltaStep2           !step inteval, write data
   integer :: step                 !steps of calculate the physical quantities
   real*8  :: dr                   !length of each moving
-  real*8  :: std                  !std of regrow bonds
   real*8  :: total_num = 0        !Total choose number
   real*8  :: accpt_num = 0        !accepted number
   real*8  :: accpt_ratio          !accepted ratio
@@ -48,11 +44,12 @@ module global_variables
 
 !##########################arrays##########################!
  real*8, allocatable, dimension(:,:) :: pos     !old position array
-!real*8, allocatable, dimension(:,:) :: pos_old !old position of part of chains
- real*8, allocatable, dimension(:,:) :: pos_new !new position of part of chains
- integer :: ic_newconf                          !The chain that is choosed
- integer :: ib_newconf                          !Numbers of monomers regrowed
- integer :: k_try                               !try numbers
+ real*8,  dimension(4)   :: pos_ip0
+ real*8,  dimension(4)   :: pos_ip1
+!real*8, allocatable, dimension(:,:) :: pos_ip0 !old position of part of chains
+!real*8, allocatable, dimension(:,:) :: pos_ip1 !new position of part of chains
+ integer :: ip                                  !The chain that is choosed
+!  integer :: im                                  !The monomer that is choosed
 !########################end arrays########################!
 
   contains 
@@ -133,50 +130,6 @@ subroutine rij_and_rr(rij, rsqr, i, j)
   rsqr = rij(1)*rij(1) + rij(2)*rij(2) + rij(3)*rij(3)
 
 end subroutine rij_and_rr
-
-
-subroutine gauss(sigma, mu, x)
-  !--------------------------------------!
-  !Gaussian distribution function
-  !   
-  !Input
-  !   mu, sigma
-  !Output
-  !   x
-  !External Variables
-  !   
-  !Routine Referenced:
-  !1.
-  !--------------------------------------!
-  implicit none
-  real*8, intent(in)  :: simga
-  real*8, intent(in)  :: mu
-  real*8, intent(out) :: x
-  real*8 :: r, v1, v2, rnd1, rnd2
-
-  r = 2
-  do while ( r > 1 ) 
-    call random_number(rnd1)
-    call random_number(rnd2)
-    v1 = 2 * rnd1 - 1
-    v2 = 2 * rnd2 - 1
-    r = v1 * v1 + v2 * v2
-  end do
-  x = v1 * sqrt( -2*log(r)/r )
-  x = mu + simga * x
-
-end subroutine gauss
-
-
-subroutine cross_product(x, y, z)
-  implicit none
-  real*8, dimension(3), intent(in)  :: x
-  real*8, dimension(3), intent(in)  :: y
-  real*8, dimension(3), intent(out) :: z
-
-  z(1) = x(2)*y(3) - x(3)*y(2)
-  z(2) = x(3)*y(1) - x(1)*y(3)
-  z(3) = x(1)*y(2) - x(2)*y(1)
 
 end module global_variables
 

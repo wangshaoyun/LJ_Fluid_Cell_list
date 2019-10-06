@@ -3,7 +3,6 @@ module input_output
   
   save
   real*8, allocatable, dimension(:,:), private :: rdf
-
   contains
 
 subroutine initialize_parameters
@@ -30,9 +29,6 @@ subroutine initialize_parameters
   !Input parameters
   call read_data
 
-  ! data operation
-  NN = Nml*Ngl
-
   Lx = (NN/rho)**(1./3)
   Ly = Lx
   Lz = Lx
@@ -54,9 +50,7 @@ subroutine read_data
   open(unit=100, file='system_data.txt')
     read(100,*) rho
     read(100,*) Beta
-    read(100,*) Nml
-    read(100,*) Ngl
-    read(100,*) R_bond
+    read(100,*) NN
     read(100,*) StepNum0
     read(100,*) StepNum
     read(100,*) DeltaStep1
@@ -74,10 +68,7 @@ subroutine write_data_to_screen
   implicit none
 
   write(*,*) '******************system_data***********************'
-  write(*,*) 'Total chains,             Ngl:',    Ngl
-  write(*,*) 'Particles of each chain,  Nml:',    Nml
   write(*,*) 'Total particles,          NN :',    NN
-  write(*,*) 'Bond length of polymer,   R_bond:', R_bond
   write(*,*) 'Length of the box,        Lx :',    Lx
   write(*,*) 'Width of the box,         Ly :',    Ly
   write(*,*) 'Height of the box,        Lz :',    Lz
@@ -148,7 +139,7 @@ subroutine compute_physical_quantities
   use global_variables
   use compute_energy
   implicit none
-  integer i,j
+  integer i,j,k
   real*8 :: rr, pressure, Rg
   real*8, dimension(3) :: rij
   
@@ -177,7 +168,7 @@ subroutine compute_radial_distribution_function
   use global_variables
   implicit none
   integer :: i,j,k
-  real*8  :: rr, del_r
+  real*8  :: rr, del_r, ri
   real*8, dimension(3) :: rij
 
   del_r = Lx/2/500
@@ -194,13 +185,13 @@ subroutine compute_radial_distribution_function
 
   open(31,file='./data/rdf.txt')
     do i=1, 500
-      write(31,310) del_r*i, rdf(i,2)
+      ri = (i-0.5) * del_r
+      write(31,310) del_r*i, rdf(i,2)/ri/ri/del_r
       310 format(2F20.6)
     end do
   close(31)
 
 end subroutine compute_radial_distribution_function
-
 
 subroutine write_pos
   !----------------------------------------!
@@ -291,8 +282,6 @@ subroutine write_time(time)
     write(10,*) 'Lx:           ', real(Lx)
     write(10,*) 'Ly:           ', real(Ly)
     write(10,*) 'Lz:           ', real(Lz)
-    write(10,*) 'Ngl:          ', Ngl
-    write(10,*) 'Nml:          ', Nml
     write(10,*) 'NN:           ', NN
   close(10)
 
