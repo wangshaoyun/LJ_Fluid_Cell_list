@@ -8,3 +8,7 @@ data/time.txt
 *.mod
 *.o
 main
+data/cell_list.txt
+data/hoc_r.txt
+data/cell_list.txt
+data/hoc_r.txt

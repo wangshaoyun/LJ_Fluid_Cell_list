@@ -106,7 +106,8 @@ subroutine build_cell_list
   use global_variables
   implicit none
   integer :: i, j, k, l, m, n, p, q, r, x, y, z
-  integer :: icelx, icely, icelz
+  integer :: icelx, icely, icelz, ncel
+  real*8 :: rr,rij(3),EE,inv_rr2,inv_rr6
 
   if (allocated(hoc)) deallocate(hoc)
   if (allocated(inv_hoc)) deallocate(inv_hoc)
@@ -123,17 +124,17 @@ subroutine build_cell_list
   inv_cell_list = 0
 
   do i = 1, NN
-    icelx = int((pos(i,1)-1)/clx) + 1
-    icely = int((pos(i,2)-1)/cly) + 1
-    icelz = int((pos(i,3)-1)/clz) + 1
+    icelx = int(pos(i,1)/clx) + 1
+    icely = int(pos(i,2)/cly) + 1
+    icelz = int(pos(i,3)/clz) + 1
     cell_list(i) = hoc(icelx,icely,icelz)
     hoc(icelx,icely,icelz) = i
   end do
 
   do i = NN, 1, -1
-    icelx = int((pos(i,1)-1)/clx) + 1
-    icely = int((pos(i,2)-1)/cly) + 1
-    icelz = int((pos(i,3)-1)/clz) + 1
+    icelx = int(pos(i,1)/clx) + 1
+    icely = int(pos(i,2)/cly) + 1
+    icelz = int(pos(i,3)/clz) + 1
     inv_cell_list(i) = inv_hoc(icelx,icely,icelz)
     inv_hoc(icelx,icely,icelz) = i
   end do
@@ -153,22 +154,25 @@ subroutine build_cell_list
               x = i + p
               y = j + q
               z = k + r
-              if (z>0 .and. z<=nclz) then
-                n = n + 1
-                if (x>nclx) then
-                  x = x - nclx
-                elseif (x<=0) then
-                  x = x + nclx
-                end if
-                if (y>ncly) then
-                  y = y - ncly
-                elseif (y<=0) then
-                  y = y + ncly
-                end if
-                cell_near_list(m,n,1) = x
-                cell_near_list(m,n,2) = y
-                cell_near_list(m,n,3) = z
+              n = n + 1
+              if (x>nclx) then
+                x = x - nclx
+              elseif (x<=0) then
+                x = x + nclx
               end if
+              if (y>ncly) then
+                y = y - ncly
+              elseif (y<=0) then
+                y = y + ncly
+              end if
+              if (z>nclz) then
+                z = z - nclz
+              elseif (z<=0) then
+                z = z + nclz
+              end if
+              cell_near_list(m,n,1) = x
+              cell_near_list(m,n,2) = y
+              cell_near_list(m,n,3) = z
             end do
           end do
         end do
@@ -176,6 +180,7 @@ subroutine build_cell_list
       end do
     end do
   end do
+
 
   open(100,file='./data/hoc_r.txt')
     do i = 1, nclx
@@ -220,27 +225,38 @@ subroutine total_energy (EE)
 
   EE = 0
 
-  do i = 1, NN
-    icelx = int((pos(i,1)-1)/clx)+1
-    icely = int((pos(i,2)-1)/cly)+1
-    icelz = int((pos(i,3)-1)/clz)+1
-    ncel = (icelx-1)*ncly*nclz+(icely-1)*nclz+icelz
-    do j = 1, cell_near_list(ncel,28,1)
-      icelx = cell_near_list(ncel,j,1)
-      icely = cell_near_list(ncel,j,2)
-      icelz = cell_near_list(ncel,j,3)
-      k = hoc(icelx,icely,icelz)
-      do while(k/=0)
-        if (k/=i) then
-          call rij_and_rr( rij, rr, i, k )
-          if (rr<rc_lj2) then
-            inv_rr2  = sigma*sigma/rr
-            inv_rr6  = inv_rr2 * inv_rr2 * inv_rr2
-            EE = EE + 4 * epsilon * ( inv_rr6 * inv_rr6 - inv_rr6 + 0.25D0) / 2
-          end if
-        end if
-        k = cell_list(k)
-      end do
+!   do i = 1, NN
+!     icelx = int(pos(i,1)/clx)+1
+!     icely = int(pos(i,2)/cly)+1
+!     icelz = int(pos(i,3)/clz)+1
+!     ncel = (icelx-1)*ncly*nclz+(icely-1)*nclz+icelz
+!     do j = 1, cell_near_list(ncel,28,1)
+!       icelx = cell_near_list(ncel,j,1)
+!       icely = cell_near_list(ncel,j,2)
+!       icelz = cell_near_list(ncel,j,3)
+!       k = hoc(icelx,icely,icelz)
+!       do while(k/=0)
+!         if (k/=i) then
+!           call rij_and_rr( rij, rr, i, k )
+!           if (rr<rc_lj2) then
+!             inv_rr2  = sigma*sigma/rr
+!             inv_rr6  = inv_rr2 * inv_rr2 * inv_rr2
+!             EE = EE + 4 * epsilon * ( inv_rr6 * inv_rr6 - inv_rr6 ) / 2
+!           end if
+!         end if
+!         k = cell_list(k)
+!       end do
+!     end do
+!   end do
+
+  do i = 1, NN - 1
+    do j = i + 1, NN
+      call rij_and_rr( rij, rr, i, j )
+      if (rr<rc_lj2) then
+        inv_rr2  = sigma*sigma/rr
+        inv_rr6  = inv_rr2 * inv_rr2 * inv_rr2
+        EE = EE + 4 * epsilon * ( inv_rr6 * inv_rr6 - inv_rr6 )
+      end if
     end do
   end do
 
@@ -271,9 +287,9 @@ subroutine Delta_Energy(DeltaE)
   integer :: i,j,icelx,icely,icelz,ncel
 
   EE1 = 0
-  icelx = int((pos_ip0(1)-1)/clx)+1
-  icely = int((pos_ip0(2)-1)/cly)+1
-  icelz = int((pos_ip0(3)-1)/clz)+1
+  icelx = int(pos_ip0(1)/clx)+1
+  icely = int(pos_ip0(2)/cly)+1
+  icelz = int(pos_ip0(3)/clz)+1
   ncel = (icelx-1)*ncly*nclz+(icely-1)*nclz+icelz
   do i = 1, cell_near_list(ncel,28,1)
     icelx = cell_near_list(ncel,i,1)
@@ -295,9 +311,9 @@ subroutine Delta_Energy(DeltaE)
   EE1 = 4 * epsilon * EE1
 
   EE2 = 0
-  icelx = int((pos_ip1(1)-1)/clx)+1
-  icely = int((pos_ip1(2)-1)/cly)+1
-  icelz = int((pos_ip1(3)-1)/clz)+1
+  icelx = int(pos_ip1(1)/clx)+1
+  icely = int(pos_ip1(2)/cly)+1
+  icelz = int(pos_ip1(3)/clz)+1
   ncel = (icelx-1)*ncly*nclz+(icely-1)*nclz+icelz
   do i = 1, cell_near_list(ncel,28,1)
     icelx = cell_near_list(ncel,i,1)
@@ -312,7 +328,7 @@ subroutine Delta_Energy(DeltaE)
         if (rr<rc_lj2) then
           inv_rr2  = sigma*sigma/rr
           inv_rr6  = inv_rr2 * inv_rr2 * inv_rr2
-          EE2 = EE2 + inv_rr6 * inv_rr6 - inv_rr6
+          EE2 = EE2 + inv_rr6 * inv_rr6 - inv_rr6 
         end if
       end if
       j = cell_list(j)
@@ -342,14 +358,14 @@ subroutine update_cell_list
   implicit none
   integer :: icelx, icely, icelz
 
-  icelx = int((pos_ip0(1)-1)/clx)+1
-  icely = int((pos_ip0(2)-1)/cly)+1
-  icelz = int((pos_ip0(3)-1)/clz)+1
+  icelx = int(pos_ip0(1)/clx)+1
+  icely = int(pos_ip0(2)/cly)+1
+  icelz = int(pos_ip0(3)/clz)+1
   call update_cell_list_delete(ip,icelx,icely,icelz)
 
-  icelx = int((pos_ip1(1)-1)/clx)+1
-  icely = int((pos_ip1(2)-1)/cly)+1
-  icelz = int((pos_ip1(3)-1)/clz)+1
+  icelx = int(pos_ip1(1)/clx)+1
+  icely = int(pos_ip1(2)/cly)+1
+  icelz = int(pos_ip1(3)/clz)+1
   call update_cell_list_add(ip,icelx,icely,icelz)
 
 end subroutine update_cell_list
@@ -398,7 +414,6 @@ subroutine update_cell_list_add(iq,icelx,icely,icelz)
 
   cell_list(iq) = hoc(icelx,icely,icelz)
   hoc(icelx,icely,icelz) = iq
-  
 
 end subroutine update_cell_list_add
 
@@ -423,7 +438,6 @@ subroutine compute_pressure (pressure)
   real*8, dimension(3) :: rij, fij
 
   vir = 0
-  pressure = 0
   do i = 1, NN-1
     do j = i+1, NN
       call rij_and_rr(rij, rr, i, j)
@@ -433,8 +447,7 @@ subroutine compute_pressure (pressure)
       vir = vir + dot_product(fij,rij)/3
     end do 
   end do
-  pressure = rho / Beta + vir / (Lx*Ly*Lz) / NN
-  write(*,*) pressure
+  pressure = rho / Beta + vir / (Lx*Ly*Lz)
 
 end subroutine compute_pressure
 

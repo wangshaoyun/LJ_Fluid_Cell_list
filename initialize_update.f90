@@ -86,11 +86,17 @@ subroutine Monte_Carlo_Move( EE, DeltaE )
 
     call New_Position
 
+!     call total_energy(EE1)
+
     call Delta_Energy(DeltaE)
 
     call Move_or_not(EE, DeltaE)
 
+!     call total_energy(EE2)
+
+!     write(*,*) EE2-EE1,DeltaE,EE1,EE2
   end do
+!   stop
 
 end subroutine Monte_Carlo_Move
 
