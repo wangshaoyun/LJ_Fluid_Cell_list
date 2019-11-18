@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/wangshaoyun/LJ_Fluid_Cell_list/blob/master/delete.jpg" width="350" title="hover text">
+  <img src="https://github.com/wangshaoyun/LJ_Fluid_Verlet_list/blob/master/gr.jpg" width="350" title="hover text">
 </p>
 
 # Monte Carlo Simulation of Lennard Jones Fluid by Cell Lists Method
