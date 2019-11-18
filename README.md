@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="https://github.com/wangshaoyun/LJ_Fluid_Verlet_list/blob/master/gr.jpg" width="350" title="hover text">
-</p>
+![Schmetical Diagram](https://github.com/wangshaoyun/LJ_Fluid_Cell_list/blob/master/delete.jpg "Priciple Deletion")
 
 # Monte Carlo Simulation of Lennard Jones Fluid by Cell Lists Method
 ## About the program
