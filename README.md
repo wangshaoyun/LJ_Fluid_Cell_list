@@ -1,5 +1,6 @@
-![Schmetical Diagram](https://github.com/wangshaoyun/LJ_Fluid_Cell_list/blob/master/delete.jpg)
-
+<p align="center">
+  <img src="https://github.com/wangshaoyun/LJ_Fluid_Cell_list/blob/master/delete.jpg" width="350" title="hover text">
+</p>
 # Monte Carlo Simulation of Lennard Jones Fluid by Cell Lists Method
 ## About the program
 1. For the calculation of short-range potential, the most common strategy is the combination of Verlet list method and cell list method [1]. Or rather, use Verlet list to calcute force and use cell list method to update Verlet list.
