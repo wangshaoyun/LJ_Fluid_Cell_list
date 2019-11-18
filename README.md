@@ -1,4 +1,4 @@
-![Schmetical Diagram](https://github.com/wangshaoyun/LJ_Fluid_Cell_list/blob/master/delete.jpg "Priciple")
+![Schmetical Diagram](https://github.com/wangshaoyun/LJ_Fluid_Cell_list/blob/master/delete.jpg)
 
 # Monte Carlo Simulation of Lennard Jones Fluid by Cell Lists Method
 ## About the program
